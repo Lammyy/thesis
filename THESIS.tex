@@ -320,6 +320,7 @@ http://bjlkeng.github.io/posts/variational-bayes-and-the-mean-field-approximatio
 https://arxiv.org/pdf/1601.00670.pdf \\
 Pattern recognition and machine learning by Bishop (2006) pages 461-dunno \\
 https://www.cs.cmu.edu/~epxing/Class/10708-17/notes-17/10708-scribe-lecture13.pdf \\
+http://dept.stat.lsa.umich.edu/~xuanlong/Papers/Nguyen-Wainwright-Jordan-10.pdf\\
 \newpage
 \subsection{Neural Networks}
 \subsubsection{Motivation}
@@ -344,22 +345,25 @@ Individually, the outputs in the hidden nodes and the output node are:
 \[a_1^{(2)}=g(\Theta^{(1)}_{1,0}x_0+\Theta^{(1)}_{1,1}x_1+\Theta^{(1)}_{1,2}x_2+\Theta^{(1)}_{1,3}x_3)\]
 \[a_2^{(2)}=g(\Theta^{(1)}_{2,0}x_0+\Theta^{(1)}_{2,1}x_1+\Theta^{(1)}_{2,2}x_2+\Theta^{(1)}_{2,3}x_3)\]
 \[a_3^{(2)}=g(\Theta^{(1)}_{3,0}x_0+\Theta^{(1)}_{3,1}x_1+\Theta^{(1)}_{3,2}x_2+\Theta^{(1)}_{3,3}x_3)\]
-\[f_\Theta(\bm{x)}=a_1^{(3)}=g(\Theta^{(2)}_{1,0}a_0^{(2)}+\Theta^{(2)}_{1,1}a_1^{(2)}+\Theta^{(2)}_{1,2}a_2^{(2)}+\Theta^{(2)}_{1,3}a_3^{(2)})\]
+\[f_\Theta(\bm{x})=a_1^{(3)}=g(\Theta^{(2)}_{1,0}a_0^{(2)}+\Theta^{(2)}_{1,1}a_1^{(2)}+\Theta^{(2)}_{1,2}a_2^{(2)}+\Theta^{(2)}_{1,3}a_3^{(2)})\]
 Denoting the weights outputting to unit $i$ in layer $j+1$ as $\bm{\theta}^{(j)}_i = [\Theta_{i,0}^{(j)}\quad \Theta_{i,1}^{(j)}\dots \Theta_{i,k}^{(j)}]^\top$ where $k+1$ is the number of inputs, we have the vectorized notation:
 \[a_1^{(2)}=g(\bm{\theta}^{(1)^\top}_1\bm{x})\]
 \[a_2^{(2)}=g(\bm{\theta}^{(1)^\top}_2\bm{x})\]
 \[a_3^{(2)}=g(\bm{\theta}^{(1)^\top}_3\bm{x})\]
 \[f_{\bm{\theta}}(\bm{x})=a_1^{(3)}=g(\bm{\theta}_1^{(2)^\top}\bm{a}^{(2)})\] 
-where $\bm{a}^{(2)}=[a_1^{(2)}\quad a_2^{(2)}\quad a_3^{(3)}]^\top$.
+where $\bm{a}^{(2)}=[a_1^{(2)}\quad a_2^{(2)}\quad a_3^{(3)}]^\top$.\\
+An even simpler notation is:
+\[\bm{a}^{(2)}=g(\Theta^{(1)^\top}\bm{x})\]
+\[f_\Theta (\bm{x})=\bm{a}^{(3)}=g(\Theta^{(2)^\top}\bm{a}^{(2)})\]
 \subsubsection{Back-Propagation}
 The goal of back-propogation is to train the weights of the network such that the squared error cost function, which we will denote as $L$ is minimized:
 \[\min_\Theta L(\Theta)=\frac12 (\bm{y}-\bm{f}_\Theta(\bm{x}))^\top(\bm{y}-\bm{f}_\Theta(\bm{x})).\]
-The $\frac12$ factor is included so that the derivative will not have a constant term. The derivative is multiplied by an arbitrary training rate during optimization so there is no significant impact of including the term.\\
+The $\frac12$ factor is included to eliminate the factor of 2 in the derivative, simplifying the derivations. The derivative is multiplied by an arbitrary training rate during optimization so there is no significant impact of including that term.\\
 In the back-propogation algorithm, the weights are initialized randomly, and the goal is to find the partial derivative of the loss function with respect to the individual weights \[\frac{\partial}{\partial\Theta_{m,n}^{(j)}}L(\Theta),\]
-so that gradient descent can be performed to optimize the weights. For each training sample $(\bm{x}^{(i)},\bm{y}^{(i)})$, $i=1,\dots,N$, the input signal is propogated forward throughout the network to calculate $\bm{a}^{(j)}$ for $j=2,\dots,J$, where $J$ is the total number of layers. The difference between the network output and the ideal result is calculated with 
-\[\bm{\delta}^{(J)}=\bm{a}^{(J)}-\bm{y}^{(i)},\] 
+so that gradient descent can be performed to optimize the weights. For each training sample $(\bm{x}^{(I)},\bm{y}^{(I)})$, $I=1,\dots,N$, the input signal is propogated forward throughout the network to calculate $\bm{a}^{(j)}$ for $j=2,\dots,J$, where $J$ is the total number of layers. The difference between the network output and the ideal result is calculated with 
+\[\bm{\delta}^{(J)}=\bm{a}^{(J)}-\bm{y}^{(I)},\] 
 and this error is propogated backwards through the network to find $\bm{\delta}^{(J-1)},\dots,\bm{\delta}^{(2)}$ by using the formula 
-\[\bm{\delta}^{(j)}=((\Theta^{(j)})^\top \delta^{(j+1)}).*g'(\Theta^{(j)^\top} \bm{a}^{(j)}),\] 
+\[\bm{\delta}^{(j)}=((\Theta^{(j)})^\top \bm{\delta}^{(j+1)}).*g'(\Theta^{(j)^\top} \bm{a}^{(j)}),\] 
 where $.*$ denotes element-wise multiplication and $g'$ is the derivative of the activation function. In this case, $g'$ takes in the sum of its weighted inputs, and as an example, the sigmoid activation function has the derivative $g'(\Theta^{(j)^\top} \bm{a}^{(j)})=\bm{a}^{(j)}.*(1-\bm{a}^{(j)})$. Note that $\bm{\delta}^{(1)}$ does not need to be calculated as the input layer is not weighted. \\
 The errors for each layer are multiplied by each of the preceeding layer's activation outputs to form the estimated partial derivative for the training sample. This result is added to an accumulator matrix, so that the average partial derivative from all the training samples can be computed:
 \[\Delta^{(j)}_{m,n}:=\Delta^{(j)}_{m,n}+a_n^{(j)}\delta_m^{(j+1)}\]
@@ -367,12 +371,34 @@ or in matrix-vector form.
 \[\Delta^{(j)}:=\Delta^{(j)}+\bm{\delta}^{(j+1)}(\bm{a}^{(j)})^\top.\]
 Finally, we divide the accumulator matrix entries by the number of training samples to find the average partial derivative of the cost function with respect to the weights:
 \[\frac{\partial}{\partial \Theta^{(j)}_{m,n}}L(\Theta)=\frac1N \Delta_{m,n}^{(j)}\]
-When $j\neq0$ (i.e. not considering the bias node), we can optionally add a regularizer term $\lambda > 0$ which decreases the magnitude of the weights, preventing overfitting. 
+When $n\neq0$ (i.e. not considering the bias node), we can optionally add a regularizer term $\lambda > 0$ which decreases the magnitude of the weights, preventing overfitting. 
 \[\frac{\partial}{\partial \Theta^{(j)}_{m,n}}L(\Theta)=\frac1N (\Delta_{m,n}^{(j)}+\lambda \Theta_{m,n}^{(j)})\]
 There is no significant change when the bias node is regularized.\\
-Pseudocode for the back-propogation algorithm is shown below:\\
-\textbf{INSERT ALGORITHM HERE}\\
+Pseudocode for the back-propogation algorithm is shown below.\\
+\begin{algorithm}
+\caption{Back-Propogation Algorithm}
+\KwData{Training Data $\{(\bm{x}^{(1)},\bm{y}^{(1)}),\dots ,(\bm{x}^{(N)},\bm{y}^{(N)})\}$, Regularizer Term $\lambda$}
+\KwResult{Cost Function Partial Derivatives $\frac{\partial}{\partial\Theta^{(j)}_{m,n}}L(\Theta)$}
+\BlankLine
+\Begin{Randomly initialize weights $\Theta$\;
+Set $\Delta^{(j)}_{m,n}=0 \quad \forall j,m,n$\;
+\For{$I=1$ \KwTo $N$}{
+Set $\bm{a}^{(1)}=\bm{x}^{(I)}$\;
+\For{$j=2$ \KwTo $J$}{
+Set $\bm{a}^{(j)}=\Theta^{(j-1)^\top}\bm{a}^{(j-1)}$\;}
+Set $\bm{\delta}^{(J)}=\bm{a}^{(J)}-\bm{y}^{(I)}$\;
+\For{$j=J-1$ \KwTo $2$}{
+Set $\bm{\delta}^{(j)}=((\Theta^{(j)})^\top \bm{\delta}^{(j+1)}).*g'(\Theta^{(j)^\top}\bm{a}^{(j)})$\;
+}
+\For{$j=1$ \KwTo $J-1$}{
+Set $\Delta^{(j)}=\Delta^{(j)}+\bm{\delta}^{(j+1)}(\bm{a}^{(j)})^\top$\;
+}}
+\For{all $j,m,n$}{
+\eIf{$n=0$}{Set $\frac{\partial}{\partial\Theta^{(j)}_{m,n}}L(\Theta)=\frac1N \Delta^{(j)}_{m,n}$\;
+}{Set $\frac{\partial}{\partial\Theta^{(j)}_{m,n}}L(\Theta)=\frac1N (\Delta^{(j)}_{m,n}+\lambda\Theta^{(j)}_{m,n})$\;}}}
+\end{algorithm}
 Having derived the partial derivatives of the loss function with respect to the individual weights, we can use gradient descent or some other optimization method to update the weights. The partial derivatives are re-calculated after each optimization update until convergence.
+\newpage
 \subsubsection{Weight Initialization}
 Proper initialization of the weights is ideal to improve convergence, as if the weights are too low, then the nodal outputs will continually decrease through the layers and become very small, requiring many iterations of back-propogation training to fix. Similarly, if the weights are too high, then the result output of forward propogation will be extremely large. In this section we discuss Xavier Initialization, which aims to keep the signal variance constant throughout the network. To derive the initialization algorithm, first consider a single node with $n$ inputs, and let $z$ denote the weighted sum of the inputs $\bm{\theta}^\top\textbf{x}$ before it is passed through the activation function. This is written as
 \[z=\theta_0x_0+\theta_1x_1+\dots+\theta_nx_n.\]
@@ -388,8 +414,9 @@ Thus, to enforce constant signal variance throughout the network, the ideal init
 \[\theta_i\sim U\left(-\sqrt{\frac{6}{n_{in}+n_{out}}},\sqrt{\frac{6}{n_{in}+n_{out}}}\right)\]
 or
 \[\theta_i\sim N\left(0,\frac{2}{n_{in}+n_{out}}\right).\]
-\subsubsection{Example: MNIST Classification}
-Show exact pseudocode algorithm for classifying MNIST samples with results/pictures. (I have already coded a basic NNet MNIST classifier at home).
+\subsubsection{References}
+http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf\\
+Machine Learning by Andrew Ng Stanford online course\\
 \newpage
 \subsection{Autoencoding Variational Bayes}
 Kingma 2013

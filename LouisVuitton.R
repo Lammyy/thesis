@@ -1,0 +1,42 @@
+prey=100
+pred=50
+a=1
+b=0.01
+c=0.5
+d=0.01
+T=30
+t=0
+tseries=c(t)
+preyseries=c(prey)
+predseries=c(pred)
+while(t<T){
+  if(prey==0){
+    cat("all the preys died lol")
+    break
+  }
+  if(pred==0){
+    cat("all the preds died lol")
+    break
+  }
+  dt=rexp(1,rate=a*prey+b*prey*pred+c*pred+d*prey*pred)
+  action=sample(c("preyborn","preydeath","preddeath","predborn"),1,prob=c(a*prey,b*prey*pred,c*pred,d*prey*pred))
+  if(action=="preyborn"){
+    prey=prey+1
+  }
+  if(action=="preydeath"){
+    prey=prey-1
+  }
+  if(action=="preddeath"){
+    pred=pred-1
+  }
+  if(action=="predborn"){
+    pred=pred+1
+  }
+  t=t+dt
+  tseries=c(tseries,t)
+  preyseries=c(preyseries,prey)
+  predseries=c(predseries,pred)
+}
+par(mfrow=c(2,1))
+plot(tseries,preyseries)
+plot(tseries,predseries)
