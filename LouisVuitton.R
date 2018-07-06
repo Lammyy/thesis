@@ -37,6 +37,43 @@ while(t<T){
   preyseries=c(preyseries,prey)
   predseries=c(predseries,pred)
 }
-par(mfrow=c(2,1))
-plot(tseries,preyseries)
-plot(tseries,predseries)
+while(t<T){
+  if(prey==0&pred!=0){
+    dt=rexp(1,rate=c*pred)
+    pred=pred-1
+    t=t+dt
+    tseries=c(tseries,t)
+    preyseries=c(preyseries,prey)
+    predseries=c(predseries,pred)
+  }
+  if(prey==0&pred==0){
+    dt=0.2
+    t=t+dt
+    tseries=c(tseries,t)
+    preyseries=c(preyseries,prey)
+    predseries=c(predseries,pred)
+  }
+  if(pred==0&prey!=0){
+    dt=rexp(1,rate=a*prey)
+    prey=prey+1
+    t=t+dt
+    tseries=c(tseries,t)
+    preyseries=c(preyseries,prey)
+    predseries=c(predseries,pred)
+  }
+}
+tdata=seq(from=0,to=30,by=0.2)
+preydata=c(100)
+preddata=c(50)
+i=1
+while(i<=150){
+  n=max(which(tseries<0.2*i))
+  preydata=c(preydata,preyseries[n]+round(rnorm(1,mean=0,sd=10)))
+  preddata=c(preddata,predseries[n]+round(rnorm(1,mean=0,sd=10)))
+  i=i+1
+}
+par(mfrow=c(2,2))
+plot(tseries,preyseries,type="l")
+plot(tseries,predseries,type="l")
+plot(tdata,preydata,type="l")
+plot(tdata,preddata,type="l")
