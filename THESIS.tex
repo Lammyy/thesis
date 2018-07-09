@@ -78,51 +78,28 @@ The $\log q(x)$ term can be evaluated as it is the density of the data under our
 There are two main methods of estimating and optimizing the density ratio and subsequently, the ELBO: Class Probability Estimation and Divergence Minimisation. The goal of this thesis is to implement and compare these two methods (and hopefully ratio matching) over a variety of models (Hierarchical Lotka-Volterra, Image MNIST etc.) and conditions (implicit prior or likelihood), evaluating their rates of convergence, bias and mean squared error to determine which method is best in which conditions. For simplicity of notation, we will use the density ratio corresponding to the implicit prior to illustrate the methods.
 \newpage
 \subsection{Class Probability Estimation}
-
+\subsubsection{Implicit Prior}
+\subsubsection{Implicit Likelihood (\& Prior)}
 \subsection{Divergence Minimisation}
-Firstly, note that maximising the ELBO is equivalent to minimising its negative, so our overall objective is
-\[\min_\phi -\mathbb{E}_{q_\phi(z|x)}\left[\log p_\theta(x|z)\right]+\mathbb{E}_{q_\phi(z|x)}\left[\log \frac{q_\phi(z|x)}{p(z)}\right]\]
+\subsubsection{Implicit Prior}
+Firstly, note that maximising the ELBO is equivalent to minimising its negative, so our overall objective is (Ask scott about amortized inference: optimizing across $x\sim q^*(x)$)
+\[\min_\phi -\mathbb{E}_{q^*(x)q_\phi(z|x)}\left[\log p_\theta(x|z)\right]+\mathbb{E}_{q^*(x)q_\phi(z|x)}\left[\log \frac{q_\phi(z|x)}{p(z)}\right]\]
 or
-\[\min_\phi -\mathbb{E}_{p(\epsilon)}\left[\log p_\theta(x|\mathcal{G}_\phi(\epsilon;x)\right]+KL[q_\phi(z|x)||p(z)]\]
-Denoting the true density ratio $\frac{q_\phi(z|x)}{p(z)}$ as $r^*(z;x)$, we aim to find an estimator $\hat{r}(z;x)$. To do so, we apply a theorem (Nguyen et al. 2010) to find a lower bound to the f-divergence between the two distributions in terms of the ratio estimator.\\
+\[\min_\phi -\mathbb{E}_{q^*(x)p(\epsilon)}\left[\log p_\theta(x|\mathcal{G}_\phi(\epsilon;x)\right]+\mathbb{E}_{q^*(x)}KL[q_\phi(z|x)||p(z)]\]
+Denoting the true density ratio $\frac{q_\phi(z|x)}{p(z)}$ as $r^*(z)$, we aim to find an estimator $\hat{r}(z)$. To do so, we apply a theorem (Nguyen et al. 2010) to find a lower bound to the f-divergence between the two distributions in terms of the ratio estimator.\\
 \textbf{Theorem 1}. If $f$ is a convex function with derivative $f'$ and convex conjugate $f^*$, then we have the lower bound for the f-divergence between distributions $p(u)$ and $q(u)$:
 \[\mathcal{D}_f [q(u)||p(u)]\geq \sup_{\hat{r}} \{\mathbb{E}_{q(u)}[f'(\hat{r}(u))]-\mathbb{E}_{p(u)}[f^*(f'(\hat{r}(u)))]\}\]
 with equality when $\hat{r}(u)=q(u)/p(u)$.\\
-Now letting our ratio estimator be parametrized by $\alpha$ and applying this theorem to $p(z)$ and $q_\phi(z|x)$, we have the following lower bound for the divergence:
-\[\mathcal{D}_f[q_\phi(z|x)||p(z)]\geq \sup_\alpha \{\mathbb{E}_{q_\phi(z|x)}[f'(r_\alpha(z;x))]-\mathbb{E}_{p(z)}[f^*(f'(r_\alpha (z;x)))]\}\]
+We let our ratio estimator be parametrized by $\alpha$ and apply this theorem to $p(z)$ and $q_\phi(z|x)$ to obtain a lower bound for the divergence. We also condition the ratio estimator on $\bm{x}$, optimizing it across all $\bm{x}\sim q^*(\bm{x})$:
+\[\mathcal{D}_f[q_\phi(z|x)||p(z)]\geq \sup_\alpha \{\mathbb{E}_{q^*(x)q_\phi(z|x)}[f'(r_\alpha(z;x))]-\mathbb{E}_{q^*(x)p(z)}[f^*(f'(r_\alpha (z;x)))]\}\]
 We then specify this divergence as a KL divergence by letting $f=u\log u$, forming the following lower bound for the KL divergence:
-\[KL[q_\phi(z|x)||p(z)]\geq \sup_\alpha \{\mathbb{E}_{q_\phi(z|x)}[\log r_\alpha(z;x)]-\mathbb{E}_{p(z)}[r_\alpha(z;x)-1]\}\]
+\[KL[q_\phi(z|x)||p(z)]\geq \sup_\alpha \{\mathbb{E}_{q^*(x)q_\phi(z|x)}[\log r_\alpha(z;x)]-\mathbb{E}_{q^*(x)p(z)}[r_\alpha(z;x)-1]\}\]
 To optimize our ratio estimator, we fix $\phi$ and optimize $\alpha$ such that the lower bound is maximised, reducing the gap between the lower bound and the true KL divergence.\\
 Simultaneously, we want to minimise our overall objective, which is the negative evidence lower bound. Noting that $KL[q_\phi(z|x)||p(z)]\simeq E_{q_\phi (z|x)}[\log r_\alpha(z;x)]$, accomplish this by fixing $\alpha$ and optimizing $\phi$ to minimize the lower bound. We therefore have the bi-level optimization problem:
-\[\max_\alpha \mathbb{E}_{q_\phi(z|x)}[\log r_\alpha(z;x)]-\mathbb{E}_{p(z)}[r_\alpha(z;x)-1]\]
-\[\min_\phi -\mathbb{E}_{p(\epsilon)}\left[\log p_\theta(x|\mathcal{G}_\phi(\epsilon;x)\right]+E_{q_\phi (z|x)}[\log r_\alpha(z;x)]\]
+\[\max_\alpha \mathbb{E}_{q^*(x)q_\phi(z|x)}[\log r_\alpha(z;x)]-\mathbb{E}_{q^*(x)p(z)}[r_\alpha(z;x)-1]\]
+\[\min_\phi -\mathbb{E}_{q^*(x)p(\epsilon)}\left[\log p_\theta(x|\mathcal{G}_\phi(\epsilon;x)\right]+E_{q^*(x)q_\phi (z|x)}[\log r_\alpha(z;x)]\]
 Note that this estimator is biased as it follows a lower bound.
-% %However, with high dimensional data, calculating $p(x)$ by marginalising over z is intractable, meaning typical methods such as MCMC or expectation maximization can be computationally expensive or time-consuming. Also, with a large dataset, batch optimization such as Monte Carlo Expectation Maximization is too slow. To circumvent this problem, we apply implicit variational inference, estimating the true posterior $p_\theta(z|x$) with another implicit distribution $q_\phi(z|x)$, a stochastic generator/encoder parametrized by another neural network: given data $x$ it outputs a distribution representing $z$ that could have generated the $x$. We then want to minimize the KL divergence between the two distributions: \[KL(q(z|x)||p(z|x)) = E_{q(z|x)}\log \frac{q(z|x)}{p(z|x)}\] Applying Bayes' law to $p(z|x)$, the KL divergence becomes \[KL(q(z|x)||p(z|x)) = E_{q(z|x)}\left[ \log \frac{q(z|x)}{p(x|z)p(z)}+\log p(x)\right]\] 
-%Again, $p(x)$ is intractable, so we cannot simply calculate the KL divergence. However, since $\log p(x)$ is constant, we can rearrange the expression to form: \[\log p(x) = KL(q(z|x)||p(z|x)) - E_{q(z|x)}\log \frac{q(z|x)}{p(x|z)p(z)},\]and we can therefore minimize the KL divergence by minimizing the rightmost term, which we call the evidence lower bound: \[ELBO=E_{q(z|x)}\log \frac{q(z|x)}{p(x|z)p(z)}=-KL(q(z|x)||p(z))+E_{q(z|x)}\log p(x|z)\] via back-propagation and stochastic gradient descent. The KL divergence acts as a regularizer whilst the likelihood term represents the reconstruction error. $E_{q(z|x)}\log p(x|z)$ is the probability density of $x$ under the model given $z$.
-%(I'm not entirely sure how to estimate it but I think we sample a few $x$'s from the dataset, and generate $z$'s with $q(z|x)$ then find the mean of something??).
-\newpage
-%We have defined $q(z|x)$ as an implicit distribution: a black box stochastic process parameterized by a neural network. The advantage of using an implicit posterior approximation as opposed to a typical explicit exponential distribution is the ability to model any dependencies within the data (normally $q(z|x) = N(\mu(x),\Sigma(x))$ where $\Sigma(x)$ is a diagonal matrix). The ELBO optimization process involves estimating $KL[q(z|x)||p(z)]$, which, in an explicit case, is easily computable via
-%\[KL[q(z|x)||p(z)]=KL[N(\mu_0,\Sigma_0)||N(\mu_1,\Sigma_1)] = \frac{1}{2}(tr(\Sigma_1^{-1}\Sigma_0)+(\mu_1-\mu_0)^T\Sigma_1^{-1}(\mu_1-\mu_0)-k+\log \frac{det \Sigma_1}{det \Sigma_0}\] where k is the dimensionality of the distribution.\\ However, with an implicit $q(z|x)$, we don't have any parameters, only a method of generating samples, so we must find an alternative way of estimating $E_{q(z|x)} \log \frac{q(z|x)}{p(z)}$. A common method is an class probability estimation approach. This involves taking samples from $p(z)$ and $q(z|x)$, labelling the $p(z)$ samples with $y=1$ and the $q(z|x)$ samples with $y=0$, then alternating optimization of a discriminator function $D(z;\theta_d)=P(y=1|z)$, outputting the probability that a sample is from $q(z|x)$, and a generator function $G(\epsilon;\theta_g), \epsilon \sim N(0,I)$, creating $q(z|x)$ samples that imitate $p(z)$. This generator function is different to the previous encoder function parameterized by $\phi$. Overall, we want to minimize the Bernoulli loss (other losses can be used):
-%\begin{align*}
-%L(\theta_d,\theta_g)&= E_{p(z|y)p(y)}[-y\log D(z;\theta_d)-(1-y)\log (1-D(z;\theta_d))]
-%\\&= \pi E_{p(z)}[-\log D(z;\theta_d)]+(1-\pi)E_{q(z|x)}[-\log (1-D(z;\theta_d))] \text{ where }\pi = P(y=1)
-%\\&= \pi E_{p(z)}[-\log D(z;\theta_d)]+(1-\pi)E_{q(z|x)}[-\log (1-D(G(\epsilon ;\theta_g);\theta_d))]
-%\end{align*}
-%This is achieved by alternating minimization of the ratio loss and generative loss:
-%\[ \text{Ratio loss: } \min_{\theta_d} \pi E_{p(z)} [-\log D(x;\theta_d)]+(1-\pi )E_{q(z|x)}[-\log (1-D(z;\theta_d))]\]
-%\[ \text{Generative loss: } \min_{\theta_g} E_{q(z|x)} [\log (1-D(G(\epsilon ;\theta_g);\theta_d)]\]
-%The trained discriminator can be used to find the log ratio.\\
-%The disadvantage of this approach is that $p(z|x$) is not estimated explicitly, making inference very difficult. \\
-%An alternative approach to estimating $p(z|x)$ with an implicit $q(z|x)$ is to use the adversarial approach on the two distributions directly, but this gives us even less information to perform inference, as we won't have an estimate for the ELBO.\\
-%Our goal is to experiment with different ways of estimating $log \frac{q(z|x)}{p(z)}$, evaluating their rate of convergence, bias and variance, including their performance on a model with an implicit prior. Examples of different methods are:
-%\begin{itemize}
-%\item "Learning in Implicit Generative Models" by Mohamed (2017) uses the GAN framework to perform density ratio estimation via Class Probability Estimation, Divergence Minimisation, Ratio Matching and Moment Matching (ideas from Sugiyama, 2012)
-%\item "Variational Inference using Implicit Distributions" by Huszar (2017) describes prior-contrastive and joint-contrastive adversarial inference (denoising methods are also described but this has lower priority)
-%\item "Hierarchical Implicit Models and LFVI" by Tran (2017) describes Likelihood-Free Variational Inference designed for hierarchical models (it uses class probability estimation)
-%\item "Adversarial Variational Bayes" combines VAE and GAN to directly approximate the true posterior and find an approximate maximum likelihood assignment to its parameters (this method doesn't estimate density ratio).
-%\item "Cycle-Consistent Adversarial Learning as Approximate Bayesian Inference" by Tiao (2018) does something similar to the KL importance estimation procedure by Sugiyama 2008? (To discuss at next meeting).
-%\end{itemize}
-%We will run these on common benchmarks such as MNIST and ImageNet and compare their performances to determine which methods are unbiased, have lower variances or faster convergence. (If I finish all these early and satisfactorily then try do Quasi-Monte Carlo sampling and/or some representation learning and feature identification).
+\subsubsection{Implicit Likelihood (\& Prior)}
 \newpage
 \section{Learning}
 \subsection{Variational Inference}

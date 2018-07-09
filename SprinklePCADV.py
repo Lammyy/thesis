@@ -129,10 +129,21 @@ with tf.Session() as sess:
                 print('Step %i: Discriminator Loss: %f' % (i, dl))
         #Train Posterior on the 5 values of x specified at the start
         for k in range(5000):
-            x=np.repeat(xgen,batch_size)
-            x=x.reshape(5*batch_size, 1)
-            noise=np.random.randn(5*batch_size, noise_dim)
-            feed_dict = {x_input: x, noise_input: noise}
+            if i % 5 == 0:
+                xin=np.repeat(0,batch_size)
+            if i % 5 == 1:
+                xin=np.repeat(5,batch_size)
+            if i % 5 == 2:
+                xin=np.repeat(8,batch_size)
+            if i % 5 == 3:
+                xin=np.repeat(12,batch_size)
+            if i % 5 == 4:
+                xin=np.repeat(50,batch_size)
+            xin=xin.reshape(batch_size, 1)
+            #xin=np.repeat(xgen,batch_size)
+            #xin=x.reshape(5*batch_size, 1)
+            noise=np.random.randn(batch_size, noise_dim)
+            feed_dict = {x_input: xin, noise_input: noise}
             _, nelboo = sess.run([train_elbo, nelbo], feed_dict=feed_dict)
             if k % 1000 == 0 or k ==1:
                 print('Step %i: NELBO: %f' % (k, nelboo))
