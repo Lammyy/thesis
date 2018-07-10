@@ -9,9 +9,9 @@ batch_size=32
 learning_rate=0.001
 z_dim = 2
 noise_dim=3
-gen_hidden_dim=64
+gen_hidden_dim=32
 data_dim=1
-disc_hidden_dim=64
+disc_hidden_dim=32
 #Stuff for making true posterior graph (copied from Huszar)
 xmin = -5
 xmax = 5
@@ -66,15 +66,13 @@ def likelihood(z):
 #post = q(z|x,eps)
 def posterior(x, noise):
     input = tf.concat([x, noise], axis=1)
-    hidden_layer1 = tf.matmul(input, weights['post_hidden1'])
-    hidden_layer1 = tf.add(hidden_layer1, biases['post_hidden1'])
-    hidden_layer1 = tf.nn.relu(hidden_layer1)
+    hidden_layer1 = tf.nn.relu(tf.matmul(input, weights['post_hidden1'])+biases['post_hidden1'])
     hidden_layer2 = tf.matmul(hidden_layer1, weights['post_hidden2'])
     hidden_layer2 = tf.add(hidden_layer2, biases['post_hidden2'])
     hidden_layer2 = tf.nn.relu(hidden_layer2)
     out_layer = tf.matmul(hidden_layer2, weights['post_out'])
     out_layer = tf.add(out_layer, biases['post_out'])
-    out_layer = tf.nn.sigmoid(out_layer)
+    #out_layer = tf.nn.sigmoid(out_layer)
     return out_layer
 
 def discriminator(z):
@@ -97,13 +95,13 @@ post_sample = posterior(x_input, noise_input)
 #beta_expr=3+tf.pow(tf.maximum(0.0,post_sample[:,0]),3)+tf.pow(tf.maximum(0.0,post_sample[:,1]),3)
 #X_like=tf.log(beta_expr+epsilon)+xgen/beta_expr
 X_like = likelihood(post_sample)
-disc_real = discriminator(disc_input)
-disc_fake = discriminator(post_sample)
+disc_prior = discriminator(disc_input)
+disc_post = discriminator(post_sample)
 
-disc_loss = -tf.reduce_mean(tf.log(disc_real+epsilon)+tf.log(1.0-disc_fake+epsilon))
+disc_loss = -tf.reduce_mean(tf.log(disc_post+epsilon)+tf.log(1.0-disc_prior+epsilon))
 
 negLL=-tf.reduce_mean(X_like)
-ratio=tf.reduce_mean(tf.log(tf.divide(disc_fake+epsilon,(1-disc_fake+epsilon))))
+ratio=tf.reduce_mean(tf.log(tf.divide(disc_post+epsilon,(1-disc_post+epsilon))))
 nelbo=ratio+negLL
 
 post_vars = [weights['post_hidden1'], weights['post_hidden2'], weights['post_out'], biases['post_hidden1'], biases['post_hidden2'], biases['post_out']]
@@ -128,21 +126,21 @@ with tf.Session() as sess:
             if i % 1000 == 0 or i == 1:
                 print('Step %i: Discriminator Loss: %f' % (i, dl))
         #Train Posterior on the 5 values of x specified at the start
-        for k in range(5000):
-            if i % 5 == 0:
-                xin=np.repeat(0,batch_size)
-            if i % 5 == 1:
-                xin=np.repeat(5,batch_size)
-            if i % 5 == 2:
-                xin=np.repeat(8,batch_size)
-            if i % 5 == 3:
-                xin=np.repeat(12,batch_size)
-            if i % 5 == 4:
-                xin=np.repeat(50,batch_size)
-            xin=xin.reshape(batch_size, 1)
-            #xin=np.repeat(xgen,batch_size)
-            #xin=x.reshape(5*batch_size, 1)
-            noise=np.random.randn(batch_size, noise_dim)
+        for k in range(1):
+        #    if i % 5 == 0:
+        #        xin=np.repeat(0,batch_size)
+        #    if i % 5 == 1:
+        #        xin=np.repeat(5,batch_size)
+        #    if i % 5 == 2:
+        #        xin=np.repeat(8,batch_size)
+        #    if i % 5 == 3:
+        #        xin=np.repeat(12,batch_size)
+        #    if i % 5 == 4:
+        #        xin=np.repeat(50,batch_size)
+        #    xin=xin.reshape(batch_size, 1)
+            xin=np.repeat(xgen,batch_size)
+            xin=xin.reshape(5*batch_size, 1)
+            noise=np.random.randn(5*batch_size, noise_dim)
             feed_dict = {x_input: xin, noise_input: noise}
             _, nelboo = sess.run([train_elbo, nelbo], feed_dict=feed_dict)
             if k % 1000 == 0 or k ==1:
