@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import numpy as np
 import tensorflow as tf
 from matplotlib import pylab as plt
@@ -5,16 +7,16 @@ import seaborn as sns
 tf.reset_default_graph()
 #params
 epsilon=0.0000000001
-batch_size=1
-learning_rate=0.001
+batch_size=200
+learning_rate_p=0.0003
+learning_rate_d=0.001
 z_dim = 2
 noise_dim=3
-gen_hidden_dim1=10
-gen_hidden_dim2=20
+gen_hidden_dim1=30
+gen_hidden_dim2=60
 data_dim=1
-disc_hidden_dim=32
-disc_hidden_dim1=10
-disc_hidden_dim2=20
+disc_hidden_dim1=30
+disc_hidden_dim2=60
 #Stuff for making true posterior graph (copied from Huszar)
 xmin = -5
 xmax = 5
@@ -83,9 +85,12 @@ biases = {
     'disc_out': tf.Variable(tf.zeros([1]))
 }
 #likeli = p(x|z)
+def likelihood(z, x, beta_0=3., beta_1=1.):
+    beta = beta_0 + tf.reduce_sum(beta_1*tf.maximum(0.0, z**3), 1)
+    return -tf.log(beta) - x/beta
 
-def likelihood(z):
-    return tf.random_gamma(shape=(data_dim, batch_size), alpha=1, beta=3+tf.pow(tf.maximum(0.0,z[:,0]),3)+tf.pow(tf.maximum(0.0,z[:,1]),3))
+#def likelihood(z):
+#    return tf.random_gamma(shape=(data_dim, batch_size), alpha=1, beta=3+tf.pow(tf.maximum(0.0,z[:,0]),3)+tf.pow(tf.maximum(0.0,z[:,1]),3))
 #post = q(z|x,eps)
 def posterior(x, noise):
     hidden_layer11 = tf.nn.relu(tf.matmul(x, weights['post_hidden11'])+biases['post_hidden11'])
@@ -119,8 +124,8 @@ disc_post = discriminator(post_sample, x_input)
 
 disc_loss = -tf.reduce_mean(tf.log(disc_post+epsilon))-tf.reduce_mean(tf.log(1.0-disc_prior+epsilon))
 
-negLL=-tf.reduce_mean(likelihood(post_sample))
-ratio=tf.reduce_mean(tf.log(tf.divide(disc_post+epsilon,(1-disc_post+epsilon))))
+negLL=-tf.reduce_mean(likelihood(post_sample, x_input))
+ratio=tf.reduce_mean(tf.log(tf.divide(disc_post+epsilon,1-disc_post+epsilon)))
 nelbo=ratio+negLL
 
 post_vars = [weights['post_hidden11'],weights['post_hidden12'], weights['post_hidden2'], weights['post_hidden31'], weights['post_hidden32'], weights['post_out'],
@@ -129,30 +134,26 @@ biases['post_hidden11'], biases['post_hidden12'], biases['post_hidden2'], biases
 disc_vars = [weights['disc_hidden11'], weights['disc_hidden12'], weights['disc_hidden21'], weights['disc_hidden22'], weights['disc_hidden31'], weights['disc_hidden32'], weights['disc_out'],
 biases['disc_hidden11'], biases['disc_hidden12'], biases['disc_hidden21'], biases['disc_hidden22'], biases['disc_hidden31'], biases['disc_hidden32'], biases['disc_out']]
 
-train_elbo = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(nelbo, var_list=post_vars)
-train_disc = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(disc_loss, var_list=disc_vars)
+train_elbo = tf.train.AdamOptimizer(learning_rate=learning_rate_p).minimize(nelbo, var_list=post_vars)
+train_disc = tf.train.AdamOptimizer(learning_rate=learning_rate_d).minimize(disc_loss, var_list=disc_vars)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    for j in range(20):
+    #Pre-Train Discriminator
+    for i in range(10000):
+        z=np.sqrt(2)*np.random.randn(5*batch_size, z_dim)
+        xin=np.repeat(xgen,batch_size)
+        xin=xin.reshape(5*batch_size, 1)
+        noise=np.random.randn(5*batch_size, noise_dim)
+        feed_dict = {prior_input: z, x_input: xin, noise_input: noise}
+        _, dl = sess.run([train_disc, disc_loss], feed_dict=feed_dict)
+        if i % 1000 == 0 or i == 1:
+            print('Step %i: Discriminator Loss: %f' % (i, dl))
+    for j in range(1000):
         #Train Discriminator
-        for i in range(10000):
+        for i in range(2001):
             #Prior sample N(0,I_2x2)
             z=np.sqrt(2)*np.random.randn(5*batch_size, z_dim)
-            #Use prior samples to make an x sample
-            #x=np.random.exponential(size=(data_dim, batch_size), scale=3+np.power(np.maximum(0.0,z[:,0]),3)+np.power(np.maximum(0.0,z[:,1]),3))
-            #x=np.transpose(x)
-            #if i % 5 == 0:
-            #    xin=np.repeat(0,batch_size)
-            #if i % 5 == 1:
-            #    xin=np.repeat(5,batch_size)
-            #if i % 5 == 2:
-            #    xin=np.repeat(8,batch_size)
-            #if i % 5 == 3:
-            #    xin=np.repeat(12,batch_size)
-            #if i % 5 == 4:
-            #    xin=np.repeat(50,batch_size)
-            #xin=xin.reshape(batch_size, 1)
             xin=np.repeat(xgen,batch_size)
             xin=xin.reshape(5*batch_size, 1)
             noise=np.random.randn(5*batch_size, noise_dim)
@@ -161,18 +162,7 @@ with tf.Session() as sess:
             if i % 1000 == 0 or i == 1:
                 print('Step %i: Discriminator Loss: %f' % (i, dl))
         #Train Posterior on the 5 values of x specified at the start
-        for k in range(2):
-        #    if i % 5 == 0:
-        #        xin=np.repeat(0,batch_size)
-        #    if i % 5 == 1:
-        #        xin=np.repeat(5,batch_size)
-        #    if i % 5 == 2:
-        #        xin=np.repeat(8,batch_size)
-        #    if i % 5 == 3:
-        #        xin=np.repeat(12,batch_size)
-        #    if i % 5 == 4:
-        #        xin=np.repeat(50,batch_size)
-        #    xin=xin.reshape(batch_size, 1)
+        for k in range(1):
             xin=np.repeat(xgen,batch_size)
             xin=xin.reshape(5*batch_size, 1)
             noise=np.random.randn(5*batch_size, noise_dim)
@@ -186,10 +176,10 @@ with tf.Session() as sess:
 
     plt.subplots(figsize=(20,8))
     #make 5000 noise and 1000 of each x sample
-    N_samples=1000
+    N_samples=2000
     noise=np.random.randn(5*N_samples, noise_dim).astype('float32')
-    x_gen=np.repeat(xgen,1000)
-    x_gen=x_gen.reshape(5000,1)
+    x_gen=np.repeat(xgen,2000)
+    x_gen=x_gen.reshape(10000,1)
     #plug into posterior
     z_samples=posterior(x_gen,noise)
     z_samples=tf.reshape(z_samples,[xgen.shape[0], N_samples, 2]).eval()
