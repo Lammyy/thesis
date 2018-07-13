@@ -7,9 +7,9 @@ import seaborn as sns
 tf.reset_default_graph()
 #params
 epsilon=0.0000000001
-batch_size=100
-learning_rate_p=0.0003
-learning_rate_d=0.0003
+batch_size=128
+learning_rate_p=0.0001
+learning_rate_d=0.0001
 z_dim = 2
 noise_dim=3
 gen_hidden_dim1=30
@@ -108,8 +108,8 @@ def discriminator(z, x):
     hidden_layer21 = tf.nn.relu(tf.matmul(x, weights['disc_hidden21'])+biases['disc_hidden21'])
     hidden_layer22 = tf.nn.relu(tf.matmul(hidden_layer21, weights['disc_hidden22'])+biases['disc_hidden22'])
     hidden_layer = tf.concat([hidden_layer12, hidden_layer22], axis=1)
-    hidden_layer31 = tf.nn.relu(tf.matmul(hidden_layer, weights['post_hidden31'])+biases['post_hidden31'])
-    hidden_layer32 = tf.nn.relu(tf.matmul(hidden_layer31, weights['post_hidden32'])+biases['post_hidden32'])
+    hidden_layer31 = tf.nn.relu(tf.matmul(hidden_layer, weights['disc_hidden31'])+biases['disc_hidden31'])
+    hidden_layer32 = tf.nn.relu(tf.matmul(hidden_layer31, weights['disc_hidden32'])+biases['disc_hidden32'])
     out_layer = tf.matmul(hidden_layer32, weights['disc_out'])+biases['disc_out']
     out_layer = tf.nn.sigmoid(out_layer)
     return out_layer
@@ -145,7 +145,7 @@ with tf.device('/gpu:0'):
 with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     sess.run(tf.global_variables_initializer())
     #Pre-Train Discriminator
-    for i in range(10000):
+    for i in range(20000):
         z=np.sqrt(2)*np.random.randn(5*batch_size, z_dim)
         xin=np.repeat(xgen,batch_size)
         xin=xin.reshape(5*batch_size, 1)
@@ -155,8 +155,9 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         if i % 1000 == 0 or i == 1:
             print('Step %i: Discriminator Loss: %f' % (i, dl))
     for j in range(1000):
+        print('Iteration %i' % (j))
         #Train Discriminator
-        for i in range(2001):
+        for i in range(3001):
             #Prior sample N(0,I_2x2)
             z=np.sqrt(2)*np.random.randn(5*batch_size, z_dim)
             xin=np.repeat(xgen,batch_size)
@@ -167,14 +168,14 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
             if i % 1000 == 0 or i == 1:
                 print('Step %i: Discriminator Loss: %f' % (i, dl))
         #Train Posterior on the 5 values of x specified at the start
-        for k in range(1):
+        for k in range(2):
             xin=np.repeat(xgen,batch_size)
             xin=xin.reshape(5*batch_size, 1)
             noise=np.random.randn(5*batch_size, noise_dim)
             feed_dict = {x_input: xin, noise_input: noise}
             _, nelboo = sess.run([train_elbo, nelbo], feed_dict=feed_dict)
-            if k % 1000 == 0 or k ==1:
-                print('Step %i: NELBO: %f' % (k, nelboo))
+            #if k % 1000 == 0 or k ==1:
+            print('Step %i: NELBO: %f' % (k, nelboo))
 
     sns.set_style('whitegrid')
     sns.set_context('poster')
